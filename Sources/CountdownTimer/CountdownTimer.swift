@@ -1,11 +1,11 @@
 import UIKit
 
 @objc public protocol SRCountdownTimerDelegate: AnyObject {
-    @objc optional func timerDidUpdateCounterValue(newValue: Int)
-    @objc optional func timerDidStart()
-    @objc optional func timerDidPause()
-    @objc optional func timerDidResume()
-    @objc optional func timerDidEnd()
+    @objc optional func timerDidUpdateCounterValue(sender: SRCountdownTimer, newValue: Int)
+    @objc optional func timerDidStart(sender: SRCountdownTimer)
+    @objc optional func timerDidPause(sender: SRCountdownTimer)
+    @objc optional func timerDidResume(sender: SRCountdownTimer)
+    @objc optional func timerDidEnd(sender: SRCountdownTimer, elapsedTime: TimeInterval)
 }
 
 public class SRCountdownTimer: UIView {
@@ -60,7 +60,7 @@ public class SRCountdownTimer: UIView {
                 }
             }
 
-            delegate?.timerDidUpdateCounterValue?(newValue: currentCounterValue)
+            delegate?.timerDidUpdateCounterValue?(sender: self, newValue: currentCounterValue)
         }
     }
 
@@ -137,9 +137,9 @@ public class SRCountdownTimer: UIView {
         timer?.invalidate()
         timer = Timer(timeInterval: fireInterval, target: self, selector: #selector(SRCountdownTimer.timerFired(_:)), userInfo: nil, repeats: true)
 
-//        RunLoop.main.add(timer!, forMode: .commonModes)
+        RunLoop.main.add(timer!, forMode: RunLoop.Mode.common)
 
-        delegate?.timerDidStart?()
+        delegate?.timerDidStart?(sender: self)
     }
 
     /**
@@ -148,7 +148,7 @@ public class SRCountdownTimer: UIView {
     public func pause() {
         timer?.fireDate = Date.distantFuture
 
-        delegate?.timerDidPause?()
+        delegate?.timerDidPause?(sender: self)
     }
 
     /**
@@ -157,7 +157,17 @@ public class SRCountdownTimer: UIView {
     public func resume() {
         timer?.fireDate = Date()
 
-        delegate?.timerDidResume?()
+        delegate?.timerDidResume?(sender: self)
+    }
+
+    /**
+     * Reset the timer
+     */
+    public func reset() {
+        self.currentCounterValue = 0
+        timer?.invalidate()
+        self.elapsedTime = 0
+        setNeedsDisplay()
     }
     
     /**
@@ -167,7 +177,7 @@ public class SRCountdownTimer: UIView {
         self.currentCounterValue = 0
         timer?.invalidate()
         
-        delegate?.timerDidEnd?()
+        delegate?.timerDidEnd?(sender: self, elapsedTime: elapsedTime)
     }
     
     /**
@@ -184,7 +194,7 @@ public class SRCountdownTimer: UIView {
     @objc private func timerFired(_ timer: Timer) {
         elapsedTime += fireInterval
 
-        if elapsedTime < totalTime {
+        if elapsedTime <= totalTime {
             setNeedsDisplay()
 
             let computedCounterValue = beginingValue - Int(elapsedTime / interval)
